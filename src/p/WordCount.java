@@ -26,18 +26,19 @@ import java.text.ParseException;
 
 public class WordCount {
 	
-
-
     public static class TokenizerMapper
     extends Mapper<Object, Text, Text, Text>{
 
         DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
 
-        private Text word = new Text();
-        private Text feeling = new Text();
+//        private Text word = new Text();
+        String word = "";
+//        private Text feeling = new Text();
+        String feeling = "";
         //    private IntWritable feelingDate = new IntWritable();
         Date feelingDate = new Date();
-        private Text food = new Text();
+//        private Text food = new Text();
+        String food = "";
         //    private IntWritable foodDate = new IntWritable();
         Date foodDate = new Date();
         private Text feel = new Text();
@@ -47,56 +48,82 @@ public class WordCount {
 
 
         public void map(Object key, Text value, Context context
-                        ) throws IOException, InterruptedException {
-            StringTokenizer itr = new StringTokenizer(value.toString());
-            while (itr.hasMoreTokens()) {
-                word.set(itr.nextToken());
-                if(word.equals("feel"))
-                {
-                    feeling.set(itr.nextToken());
-                    try {
-                    	String dateWithTime = itr.nextToken(); //yyyy/MM/dd
-                    	dateWithTime += " ";
-                    	dateWithTime += itr.nextToken(); //HH:mm
-                        feelingDate = dateFormat.parse(dateWithTime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                    //        	feelingDate =  new IntWritable(Integer.parseInt(itr.nextToken()));
-                    //word.set(itr.nextToken()); //just to discard token
-                    feelingList.put(feeling, feelingDate);
-                }
-                else if(word.equals("food"))
-                {
-                    food.set(itr.nextToken());
-                    //        	foodDate =  new IntWritable(Integer.parseInt(itr.nextToken()));
-                    try {
-                    	String dateWithTime = itr.nextToken(); //yyyy/MM/dd
-                    	dateWithTime += " ";
-                    	dateWithTime += itr.nextToken(); //HH:mm
-                        foodDate = dateFormat.parse(dateWithTime);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                    //word.set(itr.nextToken()); //just to discard token
+        		) throws IOException, InterruptedException {
+        	//StringTokenizer itr = new StringTokenizer(value.toString());
+        	//while (itr.hasMoreTokens()) {
+        	//word.set(itr.nextToken()); // ** error here loops and never reaches if statement
+        	//            	System.out.println("Word: " + word);
 
-                    Iterator entries = feelingList.entrySet().iterator();
-                    while (entries.hasNext()) {
-                        Entry thisEntry = (Entry) entries.next();
-                        Text k = (Text) thisEntry.getKey();
-                        Date v = (Date) thisEntry.getValue();
-                        long diff = Math.abs(foodDate.getTime() - v.getTime());
-                        long twelveHrsInMilliS = 3600000 *12;
-                        if(diff <= twelveHrsInMilliS)
-                        {
-                            feel = k;
-                            foodItem = food;
-                            context.write(feel, foodItem);
-                        }
+        	String[] arr = value.toString().split(" ");    
 
-                    }
-                }
-            }
+        	int i = 0;
+        	for(; i < arr.length; i++) {
+
+        		word = arr[i];
+        		i++;
+        		System.out.println("Word: " + word);
+        		if(word.equals("feel"))
+        		{
+        			feeling = arr[i];
+        			i++;
+        			i++; //increment twice b/c douple space in input being counted as a token
+        			System.out.println("feeling: " + feeling);
+        			try {
+        				String dateWithTime = arr[i]; //yyyy/MM/dd
+        				i++; 
+        				System.out.println("feelDate: " + dateWithTime);
+        				dateWithTime += " ";
+        				dateWithTime += arr[i]; //HH:mm
+        				i++;
+        				System.out.println("feelDateWithTime: " + dateWithTime);
+        				feelingDate = dateFormat.parse(dateWithTime);
+        			} catch (ParseException e) {
+        				e.printStackTrace();
+        			}
+        			//        	feelingDate =  new IntWritable(Integer.parseInt(itr.nextToken()));
+        			//word.set(itr.nextToken()); //just to discard token
+        			//System.out.println("tokenDiscard: " + word);
+        			feelingList.put(new Text(feeling), feelingDate);
+        		}
+        		else if(word.equals("food"))
+        		{
+        			food = arr[i];
+        			i++;
+        			i++;// increment twice b/c douple space in input being counted as a token
+        			System.out.println("food: " + food);
+        			//        	foodDate =  new IntWritable(Integer.parseInt(itr.nextToken()));
+        			try {
+        				String dateWithTime  = arr[i];
+        				i++;
+        				System.out.println("foodDate: " + dateWithTime);
+        				dateWithTime += " ";
+        				dateWithTime += arr[i];
+        				i++;
+        				System.out.println("foodDateWithTime: " + dateWithTime);
+        				foodDate = dateFormat.parse(dateWithTime);
+        			} catch (ParseException e) {
+        				e.printStackTrace();
+        			}
+        			//                    word.set(itr.nextToken()); //just to discard token
+        			//                	System.out.println("tokenDiscard: " + word);
+
+        			Iterator entries = feelingList.entrySet().iterator();
+        			while (entries.hasNext()) {
+        				Entry thisEntry = (Entry) entries.next();
+        				Text k = (Text) thisEntry.getKey();
+        				Date v = (Date) thisEntry.getValue();
+        				long diff = Math.abs(foodDate.getTime() - v.getTime());
+        				long twelveHrsInMilliS = 3600000 *12;
+        				if(diff <= twelveHrsInMilliS)
+        				{
+        					feel = k;
+        					foodItem = new Text(food);
+        					context.write(feel, foodItem);
+        				}
+
+        			}
+        		}
+        	} //} 
         }
     }
 
@@ -150,37 +177,47 @@ public class WordCount {
             Text result = new Text(": " + maxFood.toString() + "," + Integer.toString(maxCount));
             context.write(key, result);
         }
-        
-    	public static void main(String[] args) throws Exception {
-            Configuration conf = new Configuration();
-            conf.set("6234", "hdfs://localhost:9000");
-            
-            Job job = Job.getInstance(conf, "word count");
-            job.setJarByClass(WordCount.class);
-            job.setMapperClass(TokenizerMapper.class);
-            job.setCombinerClass(IntSumReducer.class);
-            job.setReducerClass(IntSumReducer.class);
-            job.setOutputKeyClass(Text.class);
-            job.setOutputValueClass(IntWritable.class);
-            FileInputFormat.addInputPath(job, new Path("input"));
-            FileOutputFormat.setOutputPath(job, new Path("output"));
-
-            /*
-            Job job2 = Job.getInstance(conf, "word count");
-            job.setJarByClass(WordCount.class);
-            job.setMapperClass(Reverse.class);
-            job.setReducerClass(Identity.class);
-            job.setOutputKeyClass(IntWritable.class);
-            job.setOutputValueClass(Text.class);
-            FileInputFormat.addInputPath(job2, new Path("output-2"));
-            FileOutputFormat.setOutputPath(job2, new Path("output-3"));
-            */
-            
-            System.exit(job.waitForCompletion(true) ? 0 : 1);
-            System.out.println("Job Completed");
-          }
        
     }
+    
+	public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        conf.set("6234", "hdfs://localhost:9000");
+        
+        Job job = Job.getInstance(conf, "word count");
+        job.setJarByClass(WordCount.class);
+        job.setMapperClass(TokenizerMapper.class);
+        job.setCombinerClass(IntSumReducer.class);
+        job.setReducerClass(IntSumReducer.class);
+        //job.setOutputKeyClass(IntWritable.class); // changed from Text.class
+        //job.setOutputValueClass(IntWritable.class);
+        
+        //new
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
+        //new
+       
+        FileInputFormat.addInputPath(job, new Path("input"));
+        FileOutputFormat.setOutputPath(job, new Path("output"));
+        
+   
+
+        /*
+        Job job2 = Job.getInstance(conf, "word count");
+        job.setJarByClass(WordCount.class);
+        job.setMapperClass(Reverse.class);
+        job.setReducerClass(Identity.class);
+        job.setOutputKeyClass(IntWritable.class);
+        job.setOutputValueClass(Text.class);
+        FileInputFormat.addInputPath(job2, new Path("output-2"));
+        FileOutputFormat.setOutputPath(job2, new Path("output-3"));
+        */
+        
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        System.out.println("Job Completed");
+      }
     
 }
 
