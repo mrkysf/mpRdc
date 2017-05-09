@@ -26,22 +26,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.text.ParseException;
 
-public class WordCount {
+public class dietaryRestrictions {
 	
-	public class Pair<U, V> {
-
-	    private U first;
-
-	    private V second;
-
-	public Pair(U first, V second) {
-
-	 this.first = first;
-	 this.second = second;
-		} 
-	}
-	
-    public static class TokenizerMapper
+    public static class Map1
     extends Mapper<Object, Text, Text, Text>{
 
         DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm");
@@ -139,7 +126,7 @@ public class WordCount {
     //			maxCount = food.count
     //	emit (feel + ": ", maxFood + "," + maxCount)
 
-    public static class IntSumReducer
+    public static class Reduce1
     extends Reducer<Text,Text, Text, Text> {
        
        // private Text feel = new Text();
@@ -148,33 +135,35 @@ public class WordCount {
     	int itemCount;
 //    	HashMap<Text, IntWritable> foodCount = new HashMap<Text, IntWritable>();
 //    	HashMap<Text, HashMap<Text, IntWritable>> feelToFood = new HashMap<Text, HashMap<Text, IntWritable>>();
-    	HashMap<HashMap<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<HashMap<Text, Text> ,IntWritable>();
+//    	HashMap<HashMap<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<HashMap<Text, Text> ,IntWritable>();
+    	HashMap<Pair<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<Pair<Text, Text> ,IntWritable>();
 
         public void reduce(Text key, Iterable<Text> foodItems,
                            Context context
                            ) throws IOException, InterruptedException {
             for (Text foodItem : foodItems) {
 				System.out.println("feel: " + key + " foodItem: " + foodItem); // testing
-				Text feelFood = new Text("feel: " + key + " foodItem: " + foodItem);
-				Text outputValue = new Text("1");
-				context.write(feelFood, outputValue);
+//				Text feelFood = new Text("feel: " + key + " foodItem: " + foodItem);
+//				Text outputValue = new Text("1");
+//				context.write(feelFood, outputValue);
 //				HashMap<Text, Text> feelFood = new HashMap<Text, Text>();
+				Pair<Text, Text> feelFood = new Pair(key, foodItem);
 //				feelFood.put(key,foodItem);
-//				if(feelFoodToCount.get(feelFood) != null)
-//				{
-//					itemCount = feelFoodToCount.get(feelFood).get();
-//					//will replace old value
-//					feelFoodToCount.remove(feelFood);
-//					System.out.println("itemCount: " + itemCount);
-//				}
-//				else
-//				{
-//					itemCount = 0;
-//					System.out.println("itemCount: " + itemCount);
-//				}
-//				itemCount++;
-//				System.out.println("newItemCount: " + itemCount); // testing
-//				feelFoodToCount.put(feelFood, new IntWritable(itemCount));
+				if(feelFoodToCount.get(feelFood) != null)
+				{
+					itemCount = feelFoodToCount.get(feelFood).get();
+					//will replace old value
+					feelFoodToCount.remove(feelFood);
+					System.out.println("itemCount: " + itemCount); //testing
+				}
+				else
+				{
+					itemCount = 0;
+					System.out.println("itemCount: " + itemCount); //testing
+				}
+				itemCount++;
+				System.out.println("newItemCount: " + itemCount); // testing
+				feelFoodToCount.put(feelFood, new IntWritable(itemCount));
             }
             
 //          Iterator entries = feelFoodToCount.entrySet().iterator();
@@ -207,68 +196,68 @@ public class WordCount {
 //            Text result = new Text(": " + maxFood.toString() + "," + Integer.toString(maxCount));
 //            context.write(key, result);
         }
-       
+
     }
     
+    public static class Map2
+    extends Mapper<Object, Text, Text, Text>{
+
+        public void map(Object key, Text value, Context context
+        		) throws IOException, InterruptedException {
+        	
+        }
+    }
+    public static class Reduce2
+    extends Reducer<Text,Text, Text, Text> {
+
+    	public void reduce(Text key, Iterable<Text> foodItems,
+    			Context context
+    			) throws IOException, InterruptedException {
+
+    	}
+    }
 	public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         conf.set("6234", "hdfs://localhost:9000");
         
-        Job job = Job.getInstance(conf, "word count");
-        job.setJarByClass(WordCount.class);
-        job.setMapperClass(TokenizerMapper.class);
-        job.setCombinerClass(IntSumReducer.class);
-        job.setReducerClass(IntSumReducer.class);
+        Job job = Job.getInstance(conf, "job one");
+        job.setJarByClass(dietaryRestrictions.class);
+        job.setMapperClass(Map1.class);
+        job.setCombinerClass(Reduce1.class);
+        job.setReducerClass(Reduce1.class);
         
-        //new
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(Text.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
-        //new
-       
+        
         FileInputFormat.addInputPath(job, new Path("input"));
-        FileOutputFormat.setOutputPath(job, new Path("output"));
+        FileOutputFormat.setOutputPath(job, new Path("temp"));
+        job.waitForCompletion(true);
+
         
-   
-        /*
-        Job job2 = Job.getInstance(conf, "word count");
-        job.setJarByClass(WordCount.class);
-        job.setMapperClass(Reverse.class);
-        job.setReducerClass(Identity.class);
-        job.setOutputKeyClass(IntWritable.class);
+        //JOB 2
+        Job job2 = Job.getInstance(conf, "job two");
+        job2.setJarByClass(dietaryRestrictions.class);
+        job2.setMapperClass(Map2.class);
+        job2.setCombinerClass(Reduce2.class);
+        job2.setReducerClass(Reduce2.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
+        job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
-        FileInputFormat.addInputPath(job2, new Path("output-2"));
-        FileOutputFormat.setOutputPath(job2, new Path("output-3"));
-        */
+        FileInputFormat.addInputPath(job2, new Path("temp"));
+        FileOutputFormat.setOutputPath(job2, new Path("output"));
+        System.exit(job2.waitForCompletion(true) ? 0 : 1);
         
-        System.exit(job.waitForCompletion(true) ? 0 : 1);
+        //System.exit(job.waitForCompletion(true) ? 0 : 1);
+
         System.out.println("Job Completed");
       }
     
 }
 
-//    public static class Reverse
-//  		extends Mapper<Text, IntWritable, IntWritable, Text> {
-//            public void map(Text key, IntWritable value, Context context
-//                            ) throws IOException, InterruptedException {
-//                context.write(value, key);
-//            }
-//        }
-//
-//    public static class Identity
-//  		extends Reducer<IntWritable, Text, IntWritable, Text> {
-//            static int count = 0;
-//
-//            public void reduce(IntWritable key, Iterable<Text> values,
-//                               Context context) throws IOException, InterruptedException {
-//                Iterator<Text> it = values.iterator();
-//                while (count < 5 && it.hasNext()) {
-//                    context.write(key, it.next());
-//                    count++;
-//                }
-//            }
-//        }
+
 
 
 
