@@ -169,32 +169,38 @@ public class dietaryRestrictions {
 //          Iterator entries = feelFoodToCount.entrySet().iterator();
 //          while (entries.hasNext()) {
 //        		Entry thisEntry = (Entry) entries.next();
-//        		HashMap<Text,Text> fF = new HashMap<Text,Text>();
-//            	fF= (HashMap<Text, Text>) thisEntry.getKey(); 
-//            	Iterator entries2 = fF.entrySet().iterator();
-//            	Entry thisEntry2 = (Entry) entries.next();
-//             	Text k = (Text) thisEntry2.getKey(); //feel - HashMap
-//             	Text v = (Text) thisEntry2.getValue(); //Food - HashMap
+////        		HashMap<Text,Text> fF = new HashMap<Text,Text>();
+////            	fF= (HashMap<Text, Text>) thisEntry.getKey();         		
+//            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey();
+//            	
+////            	Iterator entries2 = fF.entrySet().iterator();
+////            	Entry thisEntry2 = (Entry) entries.next();
+////             	Text k = (Text) thisEntry2.getKey(); //feel - HashMap
+////             	Text v = (Text) thisEntry2.getValue(); //Food - HashMap
 //             	Text result = new Text("feeling: "  + k + " food: " + v); //feel Food
 //             	context.write(result, new Text(thisEntry.getValue().toString()));
 //          }
 
-//          int maxCount = 0;
-//            Iterator entries = feelFoodToCount.entrySet().iterator();
-//            while (entries.hasNext()) {
-//            	Entry thisEntry = (Entry) entries.next();
+            
+          //  *************Left Off Here******************
+            //must split up into seperate arrays that contain specific feelings 
+            //then can test which food item has greatest count among that array in that feeling.
+          int maxCount = 0;
+            Iterator entries = feelFoodToCount.entrySet().iterator();
+            while (entries.hasNext()) {
+            	Entry thisEntry = (Entry) entries.next();
 //            	Text k = (Text) thisEntry.getKey(); //feelFood - HashMap
-//            	//System.out.println("key(foodItem): " + k);
-//            	int v =  Integer.parseInt(thisEntry.getValue().toString()); //ItemCount for specific feelFood
-//            	System.out.println("value(foodItemCount): " + v);
-//            	if( v >= maxCount)
-//            	{
-//            		maxCount = v;
-//            		maxFood = k;
-//            	}		
-//            }
-//            Text result = new Text(": " + maxFood.toString() + "," + Integer.toString(maxCount));
-//            context.write(key, result);
+            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey();
+            	System.out.println("key: " + fF.getKey() + " value: " + fF.getValue());
+            	int itemCount =  Integer.parseInt(thisEntry.getValue().toString()); //ItemCount for specific feelFood
+            	if( itemCount >= maxCount)
+            	{
+            		maxCount = itemCount;
+            		maxFood = fF.getValue();
+            	}		
+            }
+            Text result = new Text(": " + maxFood.toString() + "," + Integer.toString(maxCount));
+            context.write(key, result);
         }
 
     }
@@ -235,7 +241,6 @@ public class dietaryRestrictions {
         FileOutputFormat.setOutputPath(job, new Path("temp"));
         job.waitForCompletion(true);
 
-        
         //JOB 2
         Job job2 = Job.getInstance(conf, "job two");
         job2.setJarByClass(dietaryRestrictions.class);
@@ -250,8 +255,6 @@ public class dietaryRestrictions {
         FileOutputFormat.setOutputPath(job2, new Path("output"));
         System.exit(job2.waitForCompletion(true) ? 0 : 1);
         
-        //System.exit(job.waitForCompletion(true) ? 0 : 1);
-
         System.out.println("Job Completed");
       }
     
