@@ -1,32 +1,30 @@
-package p;
-
-import org.apache.hadoop.io.Text;
+//package p;
 
 public class Pair< U, V> {
 
-	private Text first;
+	private U first;
 
-	private Text second;
+	private V second;
 
-	public Pair(Text first, Text second) {
+	public Pair(U first, V second) {
 
 		this.first = first;
 		this.second = second;
 	} 
 
-	public Text getKey(){
+	public U getKey(){
 		return this.first;
 	}
 
-	public Text getValue(){
+	public V getValue(){
 		return this.second;
 	}
 	
-	public void  setKey(Text first){
+	public void  setKey(U first){
 		 this.first = first;
 	}
 
-	public void  setValue(Text second){
+	public void  setValue(V second){
 		 this.second = second;
 	}
 

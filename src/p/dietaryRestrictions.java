@@ -1,9 +1,5 @@
 package p;
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -16,11 +12,11 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.StringTokenizer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -113,29 +109,11 @@ public class dietaryRestrictions {
         }
     }
 
-    //count how many foods
-    //reduce(feel, foodItemList)
-    //	int counter = 0
-    //	int maxCount = 0
-    //	string maxFood = ""
-    //	for each food in foodItemList
-    //		food.counter++
-    //	for each food in foodItemList
-    //		if (food.count > maxCount)
-    //			maxFood = food
-    //			maxCount = food.count
-    //	emit (feel + ": ", maxFood + "," + maxCount)
 
     public static class Reduce1
-    extends Reducer<Text,Text, Text, Text> {
-       
-       // private Text feel = new Text();
-        private Text maxFood = new Text();
-                
+    extends Reducer<Text,Text, Text, Pair<Text, IntWritable>> {
+                       
     	int itemCount;
-//    	HashMap<Text, IntWritable> foodCount = new HashMap<Text, IntWritable>();
-//    	HashMap<Text, HashMap<Text, IntWritable>> feelToFood = new HashMap<Text, HashMap<Text, IntWritable>>();
-//    	HashMap<HashMap<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<HashMap<Text, Text> ,IntWritable>();
     	HashMap<Pair<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<Pair<Text, Text> ,IntWritable>();
 
         public void reduce(Text key, Iterable<Text> foodItems,
@@ -143,12 +121,7 @@ public class dietaryRestrictions {
                            ) throws IOException, InterruptedException {
             for (Text foodItem : foodItems) {
 				System.out.println("feel: " + key + " foodItem: " + foodItem); // testing
-//				Text feelFood = new Text("feel: " + key + " foodItem: " + foodItem);
-//				Text outputValue = new Text("1");
-//				context.write(feelFood, outputValue);
-//				HashMap<Text, Text> feelFood = new HashMap<Text, Text>();
 				Pair<Text, Text> feelFood = new Pair(key, foodItem);
-//				feelFood.put(key,foodItem);
 				if(feelFoodToCount.get(feelFood) != null)
 				{
 					itemCount = feelFoodToCount.get(feelFood).get();
@@ -166,62 +139,70 @@ public class dietaryRestrictions {
 				feelFoodToCount.put(feelFood, new IntWritable(itemCount));
             }
             
-//          Iterator entries = feelFoodToCount.entrySet().iterator();
-//          while (entries.hasNext()) {
-//        		Entry thisEntry = (Entry) entries.next();
-////        		HashMap<Text,Text> fF = new HashMap<Text,Text>();
-////            	fF= (HashMap<Text, Text>) thisEntry.getKey();         		
-//            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey();
-//            	
-////            	Iterator entries2 = fF.entrySet().iterator();
-////            	Entry thisEntry2 = (Entry) entries.next();
-////             	Text k = (Text) thisEntry2.getKey(); //feel - HashMap
-////             	Text v = (Text) thisEntry2.getValue(); //Food - HashMap
-//             	Text result = new Text("feeling: "  + k + " food: " + v); //feel Food
-//             	context.write(result, new Text(thisEntry.getValue().toString()));
-//          }
 
-            
-          //  *************Left Off Here******************
-            //must split up into seperate arrays that contain specific feelings 
-            //then can test which food item has greatest count among that array in that feeling.
-          int maxCount = 0;
             Iterator entries = feelFoodToCount.entrySet().iterator();
             while (entries.hasNext()) {
-            	Entry thisEntry = (Entry) entries.next();
-//            	Text k = (Text) thisEntry.getKey(); //feelFood - HashMap
-            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey();
-            	System.out.println("key: " + fF.getKey() + " value: " + fF.getValue());
-            	int itemCount =  Integer.parseInt(thisEntry.getValue().toString()); //ItemCount for specific feelFood
-            	if( itemCount >= maxCount)
-            	{
-            		maxCount = itemCount;
-            		maxFood = fF.getValue();
-            	}		
+            	Entry thisEntry = (Entry) entries.next(); 
+            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey(); //will cast work here???
+            	Text k = (Text) fF.getKey();
+            	Text v = (Text) fF.getValue();
+            	int itemCount =  Integer.parseInt(thisEntry.getValue().toString());
+            	Pair<Text, IntWritable> foodCount= new Pair(v, new IntWritable(itemCount));
+            	context.write(k, foodCount);
             }
-            Text result = new Text(": " + maxFood.toString() + "," + Integer.toString(maxCount));
-            context.write(key, result);
+            
         }
 
     }
     
-    public static class Map2
-    extends Mapper<Object, Text, Text, Text>{
-
-        public void map(Object key, Text value, Context context
-        		) throws IOException, InterruptedException {
-        	
-        }
-    }
-    public static class Reduce2
-    extends Reducer<Text,Text, Text, Text> {
-
-    	public void reduce(Text key, Iterable<Text> foodItems,
-    			Context context
-    			) throws IOException, InterruptedException {
-
-    	}
-    }
+//    public static class Map2
+//    extends Mapper<Text, Pair<Text, IntWritable>, Text, Pair<Text, IntWritable>>{
+//
+//    	HashMap<Text, Pair<Text, IntWritable>> fC = new HashMap<Text, Pair<Text, IntWritable>>();
+//
+//    	public void map(Text key, Iterable<Pair<Text, IntWritable>> foodCountList, Context context
+//    			) throws IOException, InterruptedException {
+//    		int maxCount = 0;
+//    		for (Pair<Text, IntWritable> foodCount : foodCountList) {
+//
+//    			if(foodCount.getValue().get() > maxCount)
+//    			{
+//    				if(fC.get(key) == null)
+//    				{
+//    					fC.put(key, foodCount);
+//    				}
+//    				else
+//    				{
+//    					fC.remove(key);
+//    					fC.put(key, foodCount);
+//    				}
+//    			}
+//    		}
+//
+//    		Iterator entries = fC.entrySet().iterator();
+//    		while (entries.hasNext()) {
+//    			Entry thisEntry = (Entry) entries.next(); 
+//    			Text k = (Text) thisEntry.getKey();
+//    			context.write(k, (Pair<Text, IntWritable>) thisEntry.getValue());
+//    		}
+//    	}
+//    }
+//    
+//    
+//    public static class Reduce2
+//    extends Reducer<Text,Pair<Text, IntWritable>, Text, Text> {
+//
+//    	public void reduce(Text key, Iterable<Pair<Text, IntWritable>> foodCountList,
+//    			Context context
+//    			) throws IOException, InterruptedException {
+//    		for (Pair<Text, IntWritable> foodCount : foodCountList) {
+//    			
+//    			Text result = new Text(", " + foodCount.getKey() + ", " + foodCount.getValue().toString());
+//    			context.write(key, result);
+//    		}
+//    	}
+//    }
+    
 	public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         conf.set("6234", "hdfs://localhost:9000");
@@ -241,19 +222,21 @@ public class dietaryRestrictions {
         FileOutputFormat.setOutputPath(job, new Path("temp"));
         job.waitForCompletion(true);
 
-        //JOB 2
-        Job job2 = Job.getInstance(conf, "job two");
-        job2.setJarByClass(dietaryRestrictions.class);
-        job2.setMapperClass(Map2.class);
-        job2.setCombinerClass(Reduce2.class);
-        job2.setReducerClass(Reduce2.class);
-        job.setMapOutputKeyClass(Text.class);
-        job.setMapOutputValueClass(Text.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
-        FileInputFormat.addInputPath(job2, new Path("temp"));
-        FileOutputFormat.setOutputPath(job2, new Path("output"));
-        System.exit(job2.waitForCompletion(true) ? 0 : 1);
+//        //JOB 2
+//        Job job2 = Job.getInstance(conf, "job two");
+//        job2.setJarByClass(dietaryRestrictions.class);
+//        job2.setMapperClass(Map2.class);
+//        job2.setCombinerClass(Reduce2.class);
+//        job2.setReducerClass(Reduce2.class);
+//        
+//        job.setMapOutputKeyClass(Text.class);
+//        job.setMapOutputValueClass(Text.class);
+//        job.setOutputKeyClass(Text.class);
+//        job.setOutputValueClass(Text.class);
+//        
+//        FileInputFormat.addInputPath(job2, new Path("temp"));
+//        FileOutputFormat.setOutputPath(job2, new Path("output"));
+//        System.exit(job2.waitForCompletion(true) ? 0 : 1);
         
         System.out.println("Job Completed");
       }
