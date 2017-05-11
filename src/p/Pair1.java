@@ -1,12 +1,12 @@
-//package p;
+package p;
 
-public class Pair< U, V> {
+public class Pair1< U, V> {
 
 	private U first;
 
 	private V second;
 
-	public Pair(U first, V second) {
+	public Pair1(U first, V second) {
 
 		this.first = first;
 		this.second = second;

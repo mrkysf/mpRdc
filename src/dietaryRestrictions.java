@@ -8,6 +8,8 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.io.BinaryComparable;
+//import org.apache.mahout.common.IntPairWritable;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -18,6 +20,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.text.ParseException;
+import javafx.util.Pair;
 
 public class dietaryRestrictions {
 	
@@ -39,7 +42,7 @@ public class dietaryRestrictions {
         		) throws IOException, InterruptedException {
         	
         	String[] arr = value.toString().split(" ");    
-
+//        	System.out.println("key: " + key); 
         	int i = 0;
         	for(; i < arr.length; i++) {
 
@@ -108,56 +111,59 @@ public class dietaryRestrictions {
 
 
     public static class Reduce1
-    extends Reducer<Text,Text, Text, Pair<Text, IntWritable>> {
-                       
+//    extends Reducer<Text,Text, Text, PairWritable<Text, IntWritable>> {
+  extends Reducer<PairWritable<Text,Text>, PairWritable<Text, IntWritable>, PairWritable<Text, IntWritable>, Text> {
+
     	int itemCount;
-    	HashMap<Pair<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<Pair<Text, Text> ,IntWritable>();
+    	HashMap<PairWritable<Text, Text> ,IntWritable> feelFoodToCount = new HashMap<PairWritable<Text, Text> ,IntWritable>();
 
-        public void reduce(Text key, Iterable<Text> foodItems,
-                           Context context
-                           ) throws IOException, InterruptedException {
-            for (Text foodItem : foodItems) {
-				System.out.println("feel: " + key + " foodItem: " + foodItem); // testing
-				Pair<Text, Text> feelFood = new Pair(key, foodItem);
-				if(feelFoodToCount.get(feelFood) != null)
-				{
-					itemCount = feelFoodToCount.get(feelFood).get();
-					//will replace old value
-					feelFoodToCount.remove(feelFood);
-					System.out.println("itemCount: " + itemCount); //testing
-				}
-				else
-				{
-					itemCount = 0;
-					System.out.println("itemCount: " + itemCount); //testing
-				}
-				itemCount++;
-				System.out.println("newItemCount: " + itemCount); // testing
-				feelFoodToCount.put(feelFood, new IntWritable(itemCount));
-            }
-            
+    	public void reduce(Text key, Iterable<Text> foodItems,
+    			Context context
+    			) throws IOException, InterruptedException {
+    		for (Text foodItem : foodItems) {
+    			System.out.println("feel: " + key + " foodItem: " + foodItem); // testing
+    			PairWritable<Text, Text> feelFood = new PairWritable(key, foodItem);
+    			if(feelFoodToCount.get(feelFood) != null)
+    			{
+    				itemCount = feelFoodToCount.get(feelFood).get();
+    				//will replace old value
+    				feelFoodToCount.remove(feelFood);
+    				System.out.println("itemCount: " + itemCount); //testing
+    			}
+    			else
+    			{
+    				itemCount = 0;
+    				System.out.println("itemCount: " + itemCount); //testing
+    			}
+    			itemCount++;
+    			System.out.println("newItemCount: " + itemCount); // testing
+    			feelFoodToCount.put(feelFood, new IntWritable(itemCount));
+    		}
 
-            Iterator entries = feelFoodToCount.entrySet().iterator();
-            while (entries.hasNext()) {
-            	Entry thisEntry = (Entry) entries.next(); 
-            	Pair<Text, Text> fF =  (Pair<Text, Text>) thisEntry.getKey(); //will cast work here???
-            	Text k = (Text) fF.getKey();
-            	Text v = (Text) fF.getValue();
-            	int itemCount =  Integer.parseInt(thisEntry.getValue().toString());
-            	Pair<Text, IntWritable> foodCount= new Pair(v, new IntWritable(itemCount));
-            	context.write(k, foodCount);
-            }
-            
-        }
+
+    		Iterator entries = feelFoodToCount.entrySet().iterator();
+    		while (entries.hasNext()) {
+    			Entry thisEntry = (Entry) entries.next(); 
+    			PairWritable<Text, Text> fF =  (PairWritable<Text, Text>) thisEntry.getKey(); 
+    			Text k = (Text) fF.first();
+    			Text v = (Text) fF.second();
+    			int itemCount =  Integer.parseInt(thisEntry.getValue().toString());
+    			PairWritable<Text, IntWritable> foodCount= new PairWritable(v, new IntWritable(itemCount));
+//    			context.write(k, foodCount);
+    			context.write(foodCount, k);
+
+    		}
+
+    	}
 
     }
     
 //    public static class Map2
-//    extends Mapper<Text, Pair<Text, IntWritable>, Text, Pair<Text, IntWritable>>{
+//    extends Mapper<Object, Pair<Text, IntWritable>, Text, Pair<Text, IntWritable>>{
 //
 //    	HashMap<Text, Pair<Text, IntWritable>> fC = new HashMap<Text, Pair<Text, IntWritable>>();
 //
-//    	public void map(Text key, Iterable<Pair<Text, IntWritable>> foodCountList, Context context
+//    	public void map(Object key, Iterable<Pair<Text, IntWritable>> foodCountList, Context context
 //    			) throws IOException, InterruptedException {
 //    		int maxCount = 0;
 //    		for (Pair<Text, IntWritable> foodCount : foodCountList) {
@@ -199,7 +205,7 @@ public class dietaryRestrictions {
 //    		}
 //    	}
 //    }
-    
+
 	public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         conf.set("6234", "hdfs://localhost:9000");
@@ -212,8 +218,8 @@ public class dietaryRestrictions {
         
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(Text.class);
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputKeyClass(PairWritable.class);
+        job.setOutputValueClass(PairWritable.class);
         
         FileInputFormat.addInputPath(job, new Path("input"));
         FileOutputFormat.setOutputPath(job, new Path("temp"));
@@ -226,15 +232,15 @@ public class dietaryRestrictions {
 //        job2.setCombinerClass(Reduce2.class);
 //        job2.setReducerClass(Reduce2.class);
 //        
-//        job.setMapOutputKeyClass(Text.class);
-//        job.setMapOutputValueClass(Text.class);
-//        job.setOutputKeyClass(Text.class);
-//        job.setOutputValueClass(Text.class);
+//        job.setMapOutputKeyClass(Pair.class);
+//        job.setMapOutputValueClass(Pair.class);
+//        job.setOutputKeyClass(Pair.class);
+//        job.setOutputValueClass(Pair.class);
 //        
 //        FileInputFormat.addInputPath(job2, new Path("temp"));
 //        FileOutputFormat.setOutputPath(job2, new Path("output"));
 //        System.exit(job2.waitForCompletion(true) ? 0 : 1);
-        
+
         System.out.println("Job Completed");
       }
     
